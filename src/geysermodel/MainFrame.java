@@ -18,10 +18,10 @@ public class MainFrame extends javax.swing.JFrame {
 
     private int avgtemp;
     private int oldavgtemp;
-    private int waterunits;
-    private int oldwaterunits;
-    private int steamunits;
-    private int oldsteamunits;
+    private double waterfraction;
+    private double oldwaterfraction;
+    private double steamfraction;
+    private double oldsteamfraction;
     private int ejected;
     private int oldejected;
     private int burst;
@@ -209,35 +209,35 @@ private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRS
         updateStats();
         if(oldavgtemp<=avgtemp)
         {
-            jPanel2.getGraphics().fillRect(0, 0, avgtemp-230, 50);
+            jPanel2.getGraphics().fillRect(0, 1, avgtemp+10, 48);
         }else
         {
-            jPanel2.getGraphics().clearRect(avgtemp-230, 1, oldavgtemp-avgtemp, 48);
+            jPanel2.getGraphics().clearRect(avgtemp+10, 1, oldavgtemp-avgtemp, 48);
         }
-        if(oldwaterunits<=waterunits)
+        if(oldwaterfraction<=waterfraction)
         {
-            jPanel3.getGraphics().fillRect(0, 175-waterunits, 75, waterunits);
+            jPanel3.getGraphics().fillRect(0, 175-(int)(175*waterfraction), 75, (int)(175*waterfraction));
         }else
         {
-            jPanel3.getGraphics().clearRect(1, 1, 73, 174-waterunits);
+            jPanel3.getGraphics().clearRect(1, 1, 73, 174-(int)(174*waterfraction));
         }
-        if(oldsteamunits<=steamunits)
+        if(oldsteamfraction<=steamfraction)
         {
-            jPanel4.getGraphics().fillRect(0, 175-steamunits, 75, steamunits);
+            jPanel4.getGraphics().fillRect(1, 175-(int)(175*steamfraction), 73, (int)(175*steamfraction));
         }else
         {
-            jPanel4.getGraphics().clearRect(1, 1, 73, 174-steamunits);
+            jPanel4.getGraphics().clearRect(1, 1, 73, 174-(int)(174*steamfraction));
         }
         if(oldburst<=burst)
         {
-            jPanel5.getGraphics().fillRect(0, 175-burst, 75, burst);
+            jPanel5.getGraphics().fillRect(1, 175-burst, 73, burst);
         }else
         {
             jPanel5.getGraphics().clearRect(1, 1, 73, 174-burst);
         }
         if(oldejected<=ejected)
         {
-            jPanel6.getGraphics().fillRect(0, 175-ejected, 75, ejected);
+            jPanel6.getGraphics().fillRect(1, 175-ejected, 73, ejected);
         }else
         {
             jPanel6.getGraphics().clearRect(1, 1, 73, 174-ejected);
@@ -248,13 +248,13 @@ private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRS
     public void updateStats()
     {
         oldavgtemp = avgtemp;
-        oldwaterunits = waterunits;
-        oldsteamunits = steamunits;
+        oldwaterfraction = waterfraction;
+        oldsteamfraction = steamfraction;
         oldejected = ejected;
         oldburst = burst;
-        avgtemp = (int)(((WaterPanel)jPanel1).getAverageTemp()*4);
-        waterunits = ((WaterPanel)jPanel1).getWaterUnits()/165;
-        steamunits = ((WaterPanel)jPanel1).getSteamUnits()/5;
+        avgtemp = (int)(((WaterPanel)jPanel1).getAverageTempBar());
+        waterfraction = (double)((WaterPanel)jPanel1).getWaterVolume()/((WaterPanel)jPanel1).getConduitVolume();
+        steamfraction = (double)((WaterPanel)jPanel1).getSteamVolume()/((WaterPanel)jPanel1).getConduitVolume();
         ejected = ((WaterPanel)jPanel1).getWaterExpelled()/10;
         burst = ((WaterPanel)jPanel1).getWaterBurst();
     }
@@ -291,6 +291,20 @@ private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRS
 
             public void run() {
                 new MainFrame().setVisible(true);
+                
+                System.out.println(fibonacciNumber(5));
+            }
+            
+            public int fibonacciNumber(int z)
+            {
+                if(z==1 || z==2){return 1;}
+                int a = 1;
+                int b = 1;
+                for(int i=0; i<(z-2); i++)
+                {
+                    if(i%2==1){a+=b;}else{b+=a;}
+                }
+                if(a>b){return a;}else{return b;}
             }
         });
     }

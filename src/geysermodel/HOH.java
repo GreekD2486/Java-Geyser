@@ -10,7 +10,7 @@ package geysermodel;
  */
 public class HOH {
     
-    private double temp;
+    private double heat;
     private int queue;
     
     private boolean isliquid;
@@ -18,18 +18,26 @@ public class HOH {
     
     public HOH(double inittemp, boolean liquid)
     {
-        temp=inittemp;
+        heat=inittemp;
         queue=0;
-        if(liquid){isliquid=true;}else{isliquid=false;}
+        isliquid = liquid;
         marked=false;
     }
     
     public double mixWith(HOH w)
     {
         double rand = Math.pow(Math.random(), 0.01)/2;
-        double average = (temp + w.temp)/2;
-        temp = average + (temp-w.temp)*rand;
-        return temp - 2*(temp-w.temp)*rand;
+        double average = (heat + w.heat)/2;
+        heat = average + (heat-w.heat)*rand;
+        return heat - 2*(heat-w.heat)*rand;
+    }
+    
+    public void mixWith(HOH w, double thresh, double latent)
+    {
+        double rand = Math.pow(Math.random(), 100)/2;
+        double difference = w.getTemp(thresh, latent) - getTemp(thresh, latent);
+        heat += difference*rand;
+        w.addHeat(0 - difference*rand);
     }
     
     public boolean isMarked()
@@ -62,19 +70,33 @@ public class HOH {
         isliquid=true;
     }
     
-    public double getTemp()
+    public double getHeat()
     {
-        return temp;
+        return heat;
     }
     
-    public void setTemp(double t)
+    public double getTemp(double thresh, double latent)
     {
-        temp=t;
+        if(heat < thresh)
+        {
+            return heat;
+        }else if(heat > (thresh + latent))
+        {
+            return (heat - latent);
+        }else
+        {
+            return thresh;
+        }
     }
     
-    public void addTemp(double t)
+    public void setHeat(double t)
     {
-        temp+=t;
+        heat=t;
+    }
+    
+    public void addHeat(double t)
+    {
+        heat+=t;
     }
     
     public int getQueue()

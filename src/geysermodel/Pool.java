@@ -11,6 +11,8 @@ package geysermodel;
 public class Pool {
     
     private HOH[] pool;
+    private Water[] wpool;
+    private int surface;
     
     public Pool(int size, double inittemp)
     {
@@ -76,7 +78,7 @@ public class Pool {
     
     public double getTemp(int i)
     {
-        return pool[i].getTemp();
+        return pool[i].getHeat();
     }
     
     public int getVolume()

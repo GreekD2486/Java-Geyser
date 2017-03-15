@@ -58,7 +58,7 @@ public class Steam{
         }
         double fraction = (double)(count)/queuevolume;
         expellFrom((int)(fraction*queues[queuesplit]), queuesplit);
-        count-=expansion*fraction*queues[queuesplit];
+        count-=expansion*(int)(fraction*queues[queuesplit]);
         watertbe+=count;
         jumpRise(queuesplit);
         return watertbe;
@@ -243,7 +243,7 @@ public class Steam{
         int count = 0;
         for(int i=0; i<pool.length; i++)
         {
-            if(pool[i].getTemp()<thresh)
+            if(pool[i].getHeat()<thresh)
             {
                 pool[i].collapse();
                 count++;
@@ -252,7 +252,12 @@ public class Steam{
         return count;
     }
     
-    public int getVolume()
+    public int getVolume(int expansion)
+    {
+        return pool.length*expansion;
+    }
+    
+    public int getUnitCount()
     {
         return pool.length;
     }
@@ -260,6 +265,16 @@ public class Steam{
     public HOH getUnit(int i)
     {
         return pool[i];
+    }
+    
+    public double getHeat()
+    {
+        double count=0;
+        for(int i=0; i<pool.length; i++)
+        {
+            count+=pool[i].getHeat();
+        }
+        return count;
     }
     
 }

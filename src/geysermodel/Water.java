@@ -50,9 +50,9 @@ public class Water{
         pool=newpool;
     }
     
-    public HOH[] boil(double thresh, int queue)
+    public HOH[] boil(double thresh, double latent, int queue)
     {
-        int count = countToBoil(thresh);
+        int count = countToBoil(thresh, latent);
         HOH[] newpool = new HOH[pool.length - count];
         HOH[] removedpool = new HOH[count];
         int tbr = count;
@@ -72,12 +72,12 @@ public class Water{
         return removedpool;
     }
     
-    private int countToBoil(double thresh)
+    private int countToBoil(double thresh, double latent)
     {
         int count = 0;
         for(int i=0; i<pool.length; i++)
         {
-            if(pool[i].getTemp()>=thresh)
+            if(pool[i].getHeat()>=(thresh + latent))
             {
                 pool[i].boil();
                 count++;
@@ -86,7 +86,7 @@ public class Water{
         return count;
     }
     
-    public void mix(double mixrate)
+    public void mix(double mixrate, double thresh, double latent)
     {
         if(pool.length>1)
         {
@@ -97,24 +97,24 @@ public class Water{
             {
                 mix1=(int)(Math.random()*pool.length);
                 mix2=(int)(Math.random()*(pool.length-1));
-                if(mix1==mix2){mix2 = pool.length-1;}
-                pool[mix2].setTemp(pool[mix1].mixWith(pool[mix2]));
+                if(mix1==mix2){mix1++;}
+                pool[mix1].mixWith(pool[mix2], thresh, latent);
             }
         }
     }
     
-    public void mix(Steam s, double mixrate)
+    public void mix(Steam s, double mixrate, double thresh, double latent)
     {
-        if(pool.length>1 && s.getVolume()>1)
+        if(pool.length>1 && s.getUnitCount()>1)
         {
-            int mixes = (int)(s.getVolume()*mixrate/100);
+            int mixes = (int)(s.getUnitCount()*mixrate/100);
             int mix1;
             int mix2;
             for(int i=0; i<mixes; i++)
             {
                 mix1=(int)(Math.random()*pool.length);
-                mix2=(int)(Math.random()*s.getVolume());
-                s.getUnit(mix2).setTemp(pool[mix1].mixWith(s.getUnit(mix2)));
+                mix2=(int)(Math.random()*s.getUnitCount());
+                pool[mix1].mixWith(s.getUnit(mix2), thresh, latent);
             }
         }
     }
@@ -127,21 +127,21 @@ public class Water{
         {
             if(pool[i].isMarked())
             {
-                pool[i].addTemp(heatin/distribution);
+                pool[i].addHeat(heatin/distribution);
                 pool[i].deMark();
             }
         }
     }
     
-    public void heat(double heatin, double bias, double templimit)
+    public void heat(double heatin, double bias, double thresh, double latent)
     {
         int distribution = (int)(Math.random()*pool.length/100+1);
-        mark(distribution, bias, templimit, true);
+        mark(distribution, bias, thresh, latent, true);
         for(int i=0; i<pool.length; i++)
         {
             if(pool[i].isMarked())
             {
-                pool[i].addTemp(heatin/distribution);
+                pool[i].addHeat(heatin/distribution);
                 pool[i].deMark();
             }
         }
@@ -162,13 +162,13 @@ public class Water{
         }
     }
     
-    public void mark(int tbm, double bias, double templimit, boolean hot)
+    public void mark(int tbm, double bias, double templimit, double latent, boolean hot)
     {
         int index;
         for(int i=0; i<tbm; i++)
         {
             index = (int)(Math.random()*pool.length);
-            while(pool[index].isMarked() || (hot && Math.random()>Math.pow(bias, templimit-pool[index].getTemp())) || (!hot && pool[index].getTemp()!=templimit && Math.random()>Math.pow(bias, pool[index].getTemp()-templimit)))
+            while(pool[index].isMarked() || (hot && Math.random()>Math.pow(bias, templimit+latent-pool[index].getHeat())) || (!hot && Math.random()>Math.pow(bias, pool[index].getHeat()-templimit)))
             {
                 index++;
                 index%=pool.length;
@@ -205,7 +205,7 @@ public class Water{
         {
             count = pool.length;
         }
-        mark(count, bias, templimit, false);
+        mark(count, bias, templimit, 0, false);
         HOH[] newpool = new HOH[pool.length - count];
         int tbr = count;
         for(int i=0; i<pool.length; i++)
@@ -221,9 +221,14 @@ public class Water{
         pool=newpool;
     }
     
-    public double getTemp(int i)
+    public double getUnitTemp(int i, double thresh, double latent)
     {
-        return pool[i].getTemp();
+        return pool[i].getTemp(thresh, latent);
+    }
+    
+    public double getUnitHeat(int i)
+    {
+        return pool[i].getHeat();
     }
     
     public int getVolume()
@@ -231,14 +236,13 @@ public class Water{
         return pool.length;
     }
     
-    public double getAverageTemp()
+    public double getHeat()
     {
         double count=0;
         for(int i=0; i<pool.length; i++)
         {
-            count+=pool[i].getTemp();
+            count+=pool[i].getHeat();
         }
-        count/=pool.length;
         return count;
     }
     

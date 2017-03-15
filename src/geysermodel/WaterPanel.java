@@ -21,6 +21,7 @@ public class WaterPanel extends JPanel {
     private double groundtemp;
     private double thresh;
     private double oldthresh;
+    private double latent;
     private double mixrate;
     private double steammixrate;
     private double heatin;
@@ -34,55 +35,49 @@ public class WaterPanel extends JPanel {
     private double wexpellbias;
     private int[] histogram;
     private int[] oldhist;
+    private double bucketwidth;
     private int histwidth;
     private int totalvolume;
     private int belowgroundwater;
-    private double waterratio;
     private int waterexpelled;
     private int waterburst;
-    private int oldwaterunits;
-    private int olderwaterunits;
     private int step;
     
     public WaterPanel()
     {
         conduitcap = 50000;
-        groundcap = 30000;
+        groundcap = 49500;
         groundtemp = 60;
-        maxrefill = 40;
+        maxrefill = 500;
         thresh = 200;
-        mixrate = 0;
-        steammixrate = 5;
-        heatin = 1600;
-        steamspeed = 100;
-        burstpersteam = 2;
+        latent = 400;
+        mixrate = 8;//percent of water that shares heat with other water
+        steammixrate = 3200;//percent of steam that shares heat with water
+        heatin = 1000;
+        steamspeed = 500;
+        burstpersteam = 20;
         steamexpansion = 30;
         threshsens = 0.001;
-        burstsens = 1.5;//lower means more water ejected
-        refillsens = 0.8;//0 to 1 exponential to linear
-        heatbias = 0.98;//0 to 1 biased to random
-        wexpellbias = 0.90;//0 to 1 biased to random
+        burstsens = 1.01;//1 or more, lower means more water ejected
+        refillsens = 0.1;//0 to 1, logarithmic to linear
+        heatbias = 0.999;//0 to 1, biased to random
+        wexpellbias = 0.98;//0 to 1, biased to random
         totalvolume = groundcap;
         belowgroundwater = 0;
         wpool = new Water(5*groundcap/6, groundtemp+120);
         spool = new Steam(0,0);
-        histogram = new int[(int)(200-groundtemp+groundcap*threshsens)+1];
-        oldhist = new int[(int)(200-groundtemp+groundcap*threshsens)+1];
-        histwidth = 4;
+        histwidth = 5;
+        histogram = new int[680/histwidth+1];
+        bucketwidth = (thresh-groundtemp+groundcap*threshsens+latent)/(680/histwidth);
+        oldhist = new int[680/histwidth+1];
     }
     
     public void step()
     {
-        //olderwaterunits=oldwaterunits;
-        //oldwaterunits=wpool.getVolume();
-        
-        totalvolume = wpool.getVolume()+steamexpansion*spool.getVolume();
-        //waterratio = (double)(wpool.getVolume())/(wpool.getVolume()+steamexpansion*spool.getVolume());
+        totalvolume = wpool.getVolume()+spool.getVolume(steamexpansion);
         if(totalvolume>conduitcap)
         {
             waterexpelled = totalvolume-conduitcap;
-            //wpool.expellFrom((int)(waterratio*(totalvolume-conduitcap)), wexpellbias, groundtemp);
-            //spool.expellFrom((int)((1-waterratio)*(totalvolume-conduitcap)/steamexpansion));
             wpool.expellFrom(spool.expellFrom(waterexpelled, steamspeed, conduitcap/steamspeed, steamexpansion));
             totalvolume=conduitcap;
         }else{waterexpelled = 0;}
@@ -91,23 +86,20 @@ public class WaterPanel extends JPanel {
         belowgroundwater = groundcap-wpool.getVolume();
         if(belowgroundwater>0)
         {
-            wpool.addTo((int)((1-refillsens)*(maxrefill*(1-Math.pow(2, -1*belowgroundwater)))+refillsens*maxrefill*belowgroundwater/groundcap), groundtemp);
+            wpool.addTo((int)((1-refillsens)*(maxrefill*(1+Math.log10(0.9*(double)(belowgroundwater/groundcap)+0.1)))+refillsens*maxrefill*belowgroundwater/groundcap), groundtemp);
         }
-        wpool.mix(mixrate);
-        wpool.mix(spool, steammixrate);
+        wpool.mix(mixrate, thresh, latent);
+        wpool.mix(spool, steammixrate, thresh, latent);
         oldthresh=thresh;
         thresh = 200+(wpool.getVolume()*threshsens);
-        wpool.heat(heatin, heatbias, thresh);
-        spool.addTo(wpool.boil(thresh, wpool.getVolume()/steamspeed));
-        wpool.addTo(spool.collapse(thresh));
+        wpool.heat(heatin, heatbias, thresh, latent);
+        spool.addTo(wpool.boil(thresh, latent, wpool.getVolume()/steamspeed));
+        wpool.addTo(spool.collapse(thresh));//doesn't need to consider latent heat
+        
         //System.out.println(wpool.getVolume());
         System.out.println(waterexpelled+waterburst);
         
         step++;
-        /*if(wpool.getVolume()<5000 && oldwaterunits<olderwaterunits && oldwaterunits<wpool.getVolume())
-        {
-            System.out.println(step);
-        }*/
     }
     
     public void updateHistogram()
@@ -118,7 +110,7 @@ public class WaterPanel extends JPanel {
             histogram[i]=0;
         }
         int j;
-        for(int i=0; i<wpool.getVolume(); i++)
+        /*for(int i=0; i<wpool.getVolume(); i++)
         {
             j = (int)groundtemp;
             while(wpool.getTemp(i)>=(j+1))
@@ -126,27 +118,32 @@ public class WaterPanel extends JPanel {
                 j++;
             }
             histogram[(int)(j-groundtemp)]++;
+        }*/
+        
+        for(int i=0; i<wpool.getVolume(); i++)
+        {
+            j = 0;
+            while(wpool.getUnitHeat(i)>=groundtemp+bucketwidth*(j+1))
+            {
+                j++;
+            }
+            histogram[j]++;
         }
     }
     
-    public double getAverageTemp()
+    public double getAverageTempBar()
     {
-        return wpool.getAverageTemp();
+        return ((wpool.getHeat()+spool.getHeat())/(wpool.getVolume()+spool.getUnitCount())-groundtemp)*(histwidth/bucketwidth);
     }
     
-    public int getWaterUnits()
+    public int getWaterVolume()
     {
         return wpool.getVolume();
     }
     
-    public int getSteamUnits()
+    public int getSteamVolume()
     {
-        return spool.getVolume();
-    }
-    
-    public double getWSRatio()
-    {
-        return waterratio;
+        return spool.getVolume(steamexpansion);
     }
     
     public int getWaterExpelled()
@@ -159,9 +156,14 @@ public class WaterPanel extends JPanel {
         return waterburst;
     }
     
+    public int getConduitVolume()
+    {
+        return conduitcap;
+    }
+    
     public void drawHistogram()
     {
-        getGraphics().clearRect((int)((oldthresh-groundtemp)*histwidth+10), 1, 699-(int)((oldthresh-groundtemp)*histwidth+10), 449);
+        /*getGraphics().clearRect((int)((oldthresh-groundtemp)*histwidth+10), 1, 699-(int)((oldthresh-groundtemp)*histwidth+10), 449);
         for(int i=0; i<histogram.length; i++)
         {
             if(histogram[i]>=oldhist[i])
@@ -172,7 +174,22 @@ public class WaterPanel extends JPanel {
                 getGraphics().clearRect((i*histwidth)+10, 1, histwidth, 449-(histogram[i]/6));
             }
         }
-        getGraphics().drawRect((int)((thresh-groundtemp)*histwidth+10), 0, 1, 500);
+        getGraphics().drawRect((int)((thresh-groundtemp)*histwidth+10), 0, 1, 500);*/
+        
+        getGraphics().clearRect((int)((oldthresh-groundtemp)*histwidth/bucketwidth+10), 1, 1 /*699-(int)((oldthresh-groundtemp)*histwidth/bucketwidth+10)*/, 449);
+        getGraphics().clearRect((int)((oldthresh+latent-groundtemp)*histwidth/bucketwidth+10), 1, 1, 449);
+        for(int i=0; i<histogram.length; i++)
+        {
+            if(histogram[i]>=oldhist[i])
+            {
+                getGraphics().fillRect((i*histwidth)+10, 449-(histogram[i]*2/(3*histwidth)), histwidth, (histogram[i]*2/(3*histwidth)));
+            }else
+            {
+                getGraphics().clearRect((i*histwidth)+10, 1, histwidth, 449-(histogram[i]*2/(3*histwidth)));
+            }
+        }
+        getGraphics().drawRect((int)((thresh-groundtemp)*histwidth/bucketwidth+10), 0, 1, 498);
+        getGraphics().drawRect((int)((thresh+latent-groundtemp)*histwidth/bucketwidth+10), 0, 1, 498);
     }
     
     public void paintComponent(Graphics g)
